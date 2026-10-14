@@ -66,7 +66,6 @@ export class Weather {
     this.flash = 0;
     this.nextStrike = 4;
     this.lamps = [];
-    this.waterfall = null;
     this.day = 1;
     this.sound = new Sound();
 
@@ -121,7 +120,7 @@ export class Weather {
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
     const c = this.sun.shadow.camera;
-    c.left = -15; c.right = 15; c.top = 15; c.bottom = -15; c.near = 1; c.far = 90;
+    c.left = -19; c.right = 19; c.top = 19; c.bottom = -19; c.near = 1; c.far = 100;
     this.sun.shadow.bias = -0.0005;
     this.sun.shadow.normalBias = 0.04;
     this.moon = new THREE.DirectionalLight(0x8ea8ff, 0);
@@ -151,7 +150,7 @@ export class Weather {
       const c = {
         group: g,
         angle: r() * Math.PI * 2,
-        radius: overhead ? 6 + r() * 9 : 17 + r() * 24,
+        radius: overhead ? 6 + r() * 11 : 20 + r() * 24,
         y: overhead ? 13 + r() * 6 : low ? -9 + r() * 6 : 2 + r() * 12,
         base: 0.55 + r() * 0.7,
         thr: overhead ? 0.55 + r() * 0.4 : r() * 0.85,
@@ -169,7 +168,7 @@ export class Weather {
     this.rainSeed = new Float32Array(this.rainCount * 4);
     const r = rng(11);
     for (let i = 0; i < this.rainCount; i++) {
-      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 20;
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 23;
       this.rainSeed.set([Math.cos(a) * d, r() * 26 - 9, Math.sin(a) * d, 18 + r() * 8], i * 4);
     }
     this.rainGeo = new THREE.BufferGeometry();
@@ -311,13 +310,6 @@ export class Weather {
     this.updateRain(dt, w, daySm);
     this.updateLightning(dt, w, t);
     this.updateRainbow(w, elev, gray);
-    if (this.waterfall) {
-      const wu = this.waterfall.userData.uniforms;
-      wu.uTime.value = t;
-      wu.uLight.value = clamp(0.2 + daySm * 0.8) * (1 - gray * 0.25);
-      wu.uWidth.value = 1 - clamp(w.rain * 0.0);
-      this.waterfall.scale.x = 1 + w.rain * 0.5;
-    }
     this.sound.update(w.rain, w.wind, w.storm);
   }
 

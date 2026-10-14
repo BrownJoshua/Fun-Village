@@ -2,7 +2,7 @@
 
 A low-poly floating-island diorama of a South Indian village, built with Three.js and no build step.
 Everything is procedural (no model files): tiled-roof houses, thatched huts, a gopuram temple, banyan
-and coconut palms, paddy field, pond with waterfall, a bullock cart and villagers walking the lane.
+and coconut palms, paddy field, pond with geese, a bullock cart and villagers walking the lane.
 
 ## Run
 
@@ -27,5 +27,6 @@ Three.js r160 is vendored in `vendor/`, so it runs offline.
 
 - `src/main.js` – scene assembly, village layout, animation loop, UI wiring
 - `src/builders.js` – houses, temple, trees, people, bullock, cart, props
-- `src/island.js` – island terrain, rock underside, roads, waterfall
+- `src/island.js` – island terrain, rock underside, road ribbons
+- `src/life.js` – lane walkers (dogs), climbing cats, geese, ploughing path
 - `src/weather.js` – sky, sun/moon, lights, clouds, rain, lightning, fog, sound

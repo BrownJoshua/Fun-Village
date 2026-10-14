@@ -1,8 +1,8 @@
-// The floating island: grass top, soil lip, jagged rock underside, roads and waterfall.
+// The floating island: grass top, soil lip, jagged rock underside and road ribbons.
 import * as THREE from 'three';
 import { mats, rng } from './builders.js';
 
-export const ISLAND_R = 11.5;
+export const ISLAND_R = 13.5;
 const SEGMENTS = 96;
 
 export const radiusAt = (a) =>
@@ -71,14 +71,14 @@ function buildUnderside() {
       const a = (i / SEGMENTS) * Math.PI * 2;
       const wob = Math.sin(a * 7 + jr * 1.7) * 0.5 + Math.sin(a * 13 + jr * 3.1) * 0.3 + (hash(i, jr) - 0.5) * 0.6;
       const r = radiusAt(a) * row.r * (1 + wob * row.j);
-      const y = row.y + (jr > 1 ? wob * 0.35 * (jr / 4) : 0);
+      const y = row.y * 1.15 + (jr > 1 ? wob * 0.35 * (jr / 4) : 0);
       pos.push(Math.cos(a) * r, y, Math.sin(a) * r);
       c.setHex(row.c).offsetHSL(0, 0, (hash(i * 3, jr) - 0.5) * 0.05);
       col.push(c.r, c.g, c.b);
     }
   });
   const apexIndex = rows.length * SEGMENTS;
-  pos.push(0, -10.4, 0);
+  pos.push(0, -12, 0);
   c.setHex(0x3a312b);
   col.push(c.r, c.g, c.b);
 
@@ -160,39 +160,6 @@ export function buildRibbon(points, width, y, colorA, colorB, closed = false, ma
   const m = new THREE.Mesh(geo, material);
   m.receiveShadow = true;
   return m;
-}
-
-/* ---------- waterfall ---------- */
-
-export function buildWaterfall(theta) {
-  const uniforms = { uTime: { value: 0 }, uLight: { value: 1 }, uWidth: { value: 1 } };
-  const mat = new THREE.ShaderMaterial({
-    uniforms,
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
-    fragmentShader: `
-      varying vec2 vUv; uniform float uTime; uniform float uLight; uniform float uWidth;
-      void main(){
-        float x = (vUv.x - .5) / uWidth + .5;
-        float streak = sin(x * 38. + sin(vUv.y * 9. - uTime * 7.) * 1.8) * .5 + .5;
-        float flow = fract(vUv.y * 5. + uTime * 1.6 + x * 2.);
-        float foam = smoothstep(.72, 1., flow) * .5;
-        float edge = smoothstep(0., .18, x) * smoothstep(1., .82, x);
-        float fade = smoothstep(0., .55, vUv.y);
-        vec3 c = mix(vec3(.45,.72,.9), vec3(.95,.98,1.), streak * .55 + foam);
-        gl_FragColor = vec4(c * (.25 + .75 * uLight), (.5 + .35 * streak) * edge * fade);
-        #include <colorspace_fragment>
-      }`,
-  });
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 11, 1, 1), mat);
-  const re = radiusAt(theta) + 0.1;
-  mesh.position.set(Math.cos(theta) * re, -5.4, Math.sin(theta) * re);
-  mesh.rotation.y = Math.atan2(Math.cos(theta), Math.sin(theta));
-  mesh.renderOrder = 2;
-  mesh.userData.uniforms = uniforms;
-  return mesh;
 }
 
 export function buildIsland() {

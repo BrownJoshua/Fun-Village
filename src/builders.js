@@ -170,6 +170,7 @@ export function makeTiledHouse({ w = 2.8, d = 2.3, h = 1.55 } = {}) {
   // red-and-white kolam border on the veranda step
   g.add(box(w + 0.32, 0.04, 0.1, mats.redStripe, 0, 0.16, d / 2 + 1.18));
 
+  g.userData.dims = { w, d, h };
   g.userData.lamp = new V3(0, 1.0, d / 2 + 1.0);
   g.userData.doorFront = new V3(0, 0, d / 2 + 1.2);
   return g;
@@ -190,6 +191,7 @@ export function makeHut({ r = 1.05, h = 1.0 } = {}) {
   g.userData.chimney = new V3(cx, surfaceY + 0.52, cz);
   g.add(box(0.42, 0.78, 0.06, mats.darkWood, 0, 0.14 + 0.39, r * 1.0));
   g.add(box(0.26, 0.26, 0.06, mats.windowGlow, r * 0.62, 0.14 + h * 0.62, r * 0.8));
+  g.userData.dims = { r, h };
   g.userData.lamp = new V3(0, 0.9, r + 0.5);
   g.userData.doorFront = new V3(0, 0, r + 0.7);
   return g;
@@ -455,6 +457,7 @@ export function makeRangoli(seed = 0) {
 
 export function makePerson({
   type = 'woman', cloth = 0xd9481e, top = 0x2e8b57, scale = 0.9, pot = false, seed = 0, umbrella = 0xc0392b,
+  turban = null, dhoti = false, bare = false,
 } = {}) {
   const g = new THREE.Group();
   const skin = std([0x8a5634, 0x9b6a42, 0x74492c, 0x6c4128][seed % 4]);
@@ -470,6 +473,20 @@ export function makePerson({
   const hair = ball(0.09, mats.hair, 0, 0.405, -0.012, 1);
   upper.add(head, hair);
 
+  // thalapa: a wrapped head-cloth with a loose tail
+  if (turban !== null) {
+    const tm = std(turban);
+    const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.088, 0.032, 6, 12), tm);
+    wrap.rotation.x = Math.PI / 2;
+    wrap.position.set(0, 0.425, 0);
+    wrap.castShadow = true;
+    const dome = ball(0.085, tm, 0, 0.45, 0, 1);
+    dome.scale.y = 0.65;
+    const tail = box(0.05, 0.14, 0.03, tm, 0.09, 0.36, -0.06);
+    tail.rotation.z = -0.2;
+    upper.add(wrap, dome, tail);
+  }
+
   if (type === 'woman') {
     ud.skirt = cyl(0.1, 0.17, 0.42, clothMat, 0, 0.21, 0, 10);
     g.add(ud.skirt);
@@ -482,11 +499,18 @@ export function makePerson({
     for (const sx of [-1, 1]) {
       const leg = new THREE.Group();
       leg.position.set(sx * 0.045, hipY, 0);
-      leg.add(cyl(0.04, 0.035, 0.36, type === 'kid' ? clothMat : mats.white, 0, -0.18, 0, 6));
+      leg.add(cyl(0.04, 0.035, 0.36, type === 'kid' ? clothMat : dhoti ? skin : mats.white, 0, -0.18, 0, 6));
       g.add(leg);
       ud.legs.push(leg);
     }
-    upper.add(cyl(0.09, 0.095, 0.3, topMat, 0, 0.15, 0, 8));
+    upper.add(cyl(0.09, 0.095, 0.3, bare ? skin : topMat, 0, 0.15, 0, 8));
+    if (dhoti) {
+      // vesti: white waist-cloth down to the knees, plus a shoulder cloth
+      g.add(cyl(0.1, 0.135, 0.3, mats.white, 0, 0.23, 0, 10));
+      const sash = box(0.27, 0.05, 0.17, mats.white, 0, 0.2, 0);
+      sash.rotation.z = 0.55;
+      upper.add(sash);
+    }
   }
 
   for (const sx of [-1, 1]) {
@@ -617,5 +641,170 @@ export function makeCart() {
   yoke.rotation.z = Math.PI / 2;
   g.add(yoke);
   g.userData = { wheels, wheelR: 0.42 };
+  return g;
+}
+
+/* ---------- plough, dogs, cats, geese, parrots ---------- */
+
+// Faces +z. Origin is the share tip on the ground; the beam ends at the bullock's yoke.
+export function makePlough() {
+  const g = new THREE.Group();
+  g.add(box(0.07, 0.62, 0.07, mats.darkWood, 0, 0.34, -0.12));
+  const beam = box(0.06, 0.06, 1.38, mats.wood, 0, 0.735, 0.55);
+  beam.rotation.x = -0.17;
+  g.add(beam);
+  const handle = box(0.05, 0.05, 0.72, mats.wood, 0, 0.485, -0.475);
+  handle.rotation.x = 0.39;
+  g.add(handle);
+  g.add(box(0.34, 0.04, 0.04, mats.darkWood, 0, 0.62, -0.8));
+  const share = mesh(new THREE.ConeGeometry(0.07, 0.4, 4), std(0x3a3a3a, { metalness: 0.4 }), 0, 0.05, 0.1);
+  share.rotation.x = Math.PI / 2;
+  g.add(share);
+  g.userData.handle = new V3(0, 0.62, -0.8);
+  return g;
+}
+
+export function makeDog({ color = 0xc9a063, ear = 0x5a3a22, scale = 1 } = {}) {
+  const g = new THREE.Group();
+  const m = std(color), em = std(ear);
+  const body = mesh(new THREE.CapsuleGeometry(0.1, 0.34, 3, 8), m, 0, 0.32, 0);
+  body.rotation.x = Math.PI / 2;
+  g.add(body);
+  g.add(ball(0.085, std(0xf3ead8), 0, 0.3, 0.22, 1));
+  const head = new THREE.Group();
+  head.position.set(0, 0.43, 0.3);
+  head.add(box(0.15, 0.14, 0.16, m, 0, 0, 0.06));
+  head.add(box(0.09, 0.08, 0.13, std(0xe8d7b5), 0, -0.03, 0.2));
+  head.add(ball(0.022, mats.dark, 0, -0.01, 0.27));
+  for (const sx of [-1, 1]) {
+    const e = box(0.04, 0.12, 0.07, em, sx * 0.085, 0.0, 0.02);
+    e.rotation.z = sx * 0.35;
+    head.add(e, ball(0.018, mats.dark, sx * 0.05, 0.03, 0.12));
+  }
+  g.add(head);
+  const legs = [];
+  for (const [lx, lz] of [[-0.07, 0.2], [0.07, 0.2], [-0.07, -0.2], [0.07, -0.2]]) {
+    const leg = new THREE.Group();
+    leg.position.set(lx, 0.28, lz);
+    leg.add(cyl(0.032, 0.026, 0.28, m, 0, -0.14, 0, 5));
+    leg.add(ball(0.03, std(0xf3ead8), 0, -0.28, 0.01));
+    g.add(leg);
+    legs.push(leg);
+  }
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.38, -0.27);
+  const tc = cyl(0.022, 0.012, 0.26, m, 0, 0.12, -0.05, 4);
+  tc.rotation.x = -0.5;
+  tail.add(tc);
+  g.add(tail);
+  g.scale.setScalar(scale);
+  g.userData = { legs, head, tail };
+  return g;
+}
+
+export function makeCat({ color = 0xe0893a, belly = 0xf5ecd8, scale = 1.15 } = {}) {
+  const g = new THREE.Group();
+  const m = std(color);
+  const body = mesh(new THREE.CapsuleGeometry(0.065, 0.2, 3, 8), m, 0, 0.14, 0);
+  body.rotation.x = Math.PI / 2;
+  g.add(body);
+  g.add(ball(0.05, std(belly), 0, 0.12, 0.08, 1));
+  const head = new THREE.Group();
+  head.position.set(0, 0.2, 0.17);
+  head.add(ball(0.065, m, 0, 0.0, 0.02, 1));
+  for (const sx of [-1, 1]) {
+    head.add(mesh(new THREE.ConeGeometry(0.025, 0.05, 4), m, sx * 0.04, 0.065, 0));
+    head.add(ball(0.012, std(0x6fbf4a, { emissive: 0x6fbf4a, emissiveIntensity: 0.3 }), sx * 0.028, 0.012, 0.075));
+  }
+  head.add(ball(0.012, std(0xe08a8a), 0, -0.015, 0.085));
+  g.add(head);
+  const legs = [];
+  for (const [lx, lz] of [[-0.04, 0.12], [0.04, 0.12], [-0.04, -0.12], [0.04, -0.12]]) {
+    const leg = new THREE.Group();
+    leg.position.set(lx, 0.12, lz);
+    leg.add(cyl(0.017, 0.014, 0.12, m, 0, -0.06, 0, 5));
+    g.add(leg);
+    legs.push(leg);
+  }
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.16, -0.2);
+  const tc = cyl(0.014, 0.01, 0.3, m, 0, 0.13, -0.04, 4);
+  tc.rotation.x = -0.45;
+  tail.add(tc);
+  g.add(tail);
+  g.scale.setScalar(scale);
+  g.userData = { legs, head, tail };
+  return g;
+}
+
+export function makeGoose() {
+  const g = new THREE.Group();
+  const white = std(0xf7f4ec), orange = std(0xf09a2a);
+  const body = ball(0.2, white, 0, 0.13, 0, 1);
+  body.scale.set(0.72, 0.58, 1.15);
+  g.add(body);
+  const tail = mesh(new THREE.ConeGeometry(0.06, 0.16, 4), white, 0, 0.2, -0.23);
+  tail.rotation.x = -1.2;
+  g.add(tail);
+  for (const sx of [-1, 1]) {
+    const w = ball(0.1, std(0xe9e4d6), sx * 0.12, 0.17, -0.02, 1);
+    w.scale.set(0.35, 0.55, 1.2);
+    g.add(w);
+  }
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.2, 0.15);
+  const low = cyl(0.04, 0.052, 0.2, white, 0, 0.09, 0.03, 6);
+  low.rotation.x = 0.35;
+  neck.add(low);
+  const head = new THREE.Group();
+  head.position.set(0, 0.2, 0.07);
+  head.add(ball(0.052, white, 0, 0.03, 0.01, 1));
+  const beak = mesh(new THREE.ConeGeometry(0.022, 0.08, 5), orange, 0, 0.025, 0.07);
+  beak.rotation.x = Math.PI / 2;
+  head.add(beak, ball(0.01, mats.dark, 0.03, 0.045, 0.03), ball(0.01, mats.dark, -0.03, 0.045, 0.03));
+  neck.add(head);
+  g.add(neck);
+  g.userData = { neck, head };
+  return g;
+}
+
+const parrotWingGeo = new THREE.BufferGeometry();
+parrotWingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.06, 0.34, 0, -0.04, 0, 0, -0.1], 3));
+parrotWingGeo.computeVertexNormals();
+
+export function makeParrot({ perched = false, scale = 1 } = {}) {
+  const g = new THREE.Group();
+  const green = std(0x2fb34a), red = std(0xe53935), blue = std(0x2a6fd6), yellow = std(0xf4d03f);
+  const body = ball(0.07, green, 0, 0, 0, 1);
+  body.scale.set(0.8, 0.9, 1.35);
+  g.add(body);
+  g.add(ball(0.052, green, 0, 0.07, 0.075, 1));
+  const beak = mesh(new THREE.ConeGeometry(0.02, 0.05, 5), red, 0, 0.065, 0.13);
+  beak.rotation.x = Math.PI / 2 + 0.5;
+  g.add(beak, ball(0.011, mats.dark, 0.03, 0.085, 0.1), ball(0.011, mats.dark, -0.03, 0.085, 0.1));
+  g.add(ball(0.03, red, 0, 0.115, 0.05, 0));
+  const tail = mesh(new THREE.ConeGeometry(0.03, 0.26, 4), green, 0, -0.01, -0.2);
+  tail.rotation.x = -Math.PI / 2 - (perched ? 0.9 : 0.05);
+  if (perched) tail.position.set(0, -0.12, -0.12);
+  g.add(tail);
+  const tip = mesh(new THREE.ConeGeometry(0.02, 0.08, 4), blue, 0, 0, 0);
+  tip.rotation.x = tail.rotation.x;
+  tip.position.set(0, tail.position.y - (perched ? 0.09 : 0.0), tail.position.z - (perched ? 0.06 : 0.14));
+  g.add(tip);
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const w = mesh(parrotWingGeo, green);
+    w.scale.x = sx;
+    w.position.set(sx * 0.05, 0.03, 0.02);
+    if (perched) w.scale.set(sx * 0.28, 1, 1.4);
+    const patch = mesh(parrotWingGeo, yellow);
+    patch.scale.set(0.55, 1, 0.4);
+    patch.position.set(0, 0.003, 0);
+    w.add(patch);
+    g.add(w);
+    wings.push(w);
+  }
+  g.scale.setScalar(scale);
+  g.userData = { wings, perched };
   return g;
 }
