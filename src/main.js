@@ -80,14 +80,16 @@ const put = (obj, x, z, r, y = 0) => {
 const toLane = (x, z) => laneSamples.reduce((b, s) => (Math.hypot(s.x - x, s.z - z) < Math.hypot(b.x - x, b.z - z) ? s : b));
 
 const lights = [];
-function addLamp(parent, local, base = 6) {
-  const l = new THREE.PointLight(0xffa550, 0, 9, 2);
+function addLamp(parent, local, base = 6, color = 0xffa550, bulbVisible = true) {
+  const l = new THREE.PointLight(color, 0, 9, 2);
   l.userData = { base, phase: Math.random() * 6 };
   l.position.copy(local);
   parent.add(l);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), mats.lampGlow);
-  bulb.position.copy(local);
-  parent.add(bulb);
+  if (bulbVisible) {
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), mats.lampGlow);
+    bulb.position.copy(local);
+    parent.add(bulb);
+  }
   lights.push(l);
 }
 
@@ -113,6 +115,12 @@ layout.forEach((s, i) => {
   if (s.t === 'hut') chimneys.push(obj.userData.chimney.clone().applyMatrix4(obj.matrix));
   structures.push({ obj, type: s.t });
   addLamp(obj, obj.userData.lamp, s.t === 'temple' ? 9 : 6);
+  if (s.t === 'temple') {
+    // festival glow: a magenta wash on the porch and a warm light lifting the tower
+    addLamp(obj, new THREE.Vector3(-2.2, 1.3, 2.6), 8, 0xff4f9a, false);
+    addLamp(obj, new THREE.Vector3(2.2, 1.3, 2.6), 7, 0x4fe0a0, false);
+    addLamp(obj, new THREE.Vector3(0, 4.3, 1.8), 10, 0xffc070, false);
+  }
   // footpath from the doorstep to the lane
   obj.updateMatrixWorld(true);
   const door = obj.localToWorld(obj.userData.doorFront.clone());
@@ -686,6 +694,10 @@ function frame() {
 
   weather.update(dt, t);
   const w = weather.cur;
+  // festival bulbs twinkle and oil lamps flicker, only when it is dark or gloomy
+  const lit = weather.lampsOn ?? 0;
+  mats.festival.forEach((fm, k) => (fm.emissiveIntensity = 3.4 * lit * (0.6 + 0.4 * Math.sin(t * (2.1 + k * 0.7) + k * 1.9))));
+  mats.diya.emissiveIntensity = 3 * lit * (0.8 + 0.12 * Math.sin(t * 11) + 0.08 * Math.sin(t * 17.3));
   const wind = w.wind;
   const night = 1 - weather.day;
   const rainy = w.rain;

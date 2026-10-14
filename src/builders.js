@@ -120,6 +120,12 @@ export const mats = {
   }),
 };
 
+// festival bulbs (four colours, twinkled by the weather loop) and oil-lamp flames
+mats.festival = [0xff3b30, 0xffc24a, 0x3ddc84, 0xc04aff].map(
+  (c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0, roughness: 0.4 })
+);
+mats.diya = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xff9a2a, emissiveIntensity: 0 });
+
 /* ---------- little helpers ---------- */
 
 const mesh = (geo, mat, x = 0, y = 0, z = 0) => {
@@ -197,6 +203,71 @@ export function makeHut({ r = 1.05, h = 1.0 } = {}) {
   return g;
 }
 
+// Strings of coloured bulbs along the porch, every tower tier and swags to the lamp pillars,
+// plus a row of oil lamps (diyas) on the plinth. Bulbs are instanced per colour.
+function addFestivalLights(g, tiers, sz) {
+  const perColour = mats.festival.map(() => []);
+  const wire = [];
+  let n = 0;
+  const swag = (a, b, sag, count) => {
+    const pts = [];
+    for (let i = 0; i <= count; i++) {
+      const f = i / count;
+      pts.push(new V3().lerpVectors(a, b, f).setY(a.y + (b.y - a.y) * f - sag * 4 * f * (1 - f)));
+    }
+    return pts;
+  };
+  const string = (pts) => {
+    pts.forEach((p, i) => {
+      perColour[n++ % perColour.length].push(p);
+      if (i) wire.push(pts[i - 1], p);
+    });
+  };
+  const line = (a, b, count) => string(swag(a, b, 0, count));
+
+  // porch ledge
+  string(swag(new V3(-1.7, 1.66, 1.99), new V3(1.7, 1.66, 1.99), 0.2, 16));
+  // each tier: a swag along the front lip and straight runs along both sides
+  tiers.forEach(({ tw, td, y, th }) => {
+    const hw = (tw + 0.2) / 2, front = sz + (td + 0.2) / 2 + 0.02, back = sz - (td + 0.2) / 2;
+    const yy = y + th + 0.03;
+    string(swag(new V3(-hw, yy, front), new V3(hw, yy, front), 0.1, Math.round(tw * 4.5)));
+    for (const sx of [-1, 1]) line(new V3(sx * hw, yy, front), new V3(sx * hw, yy, back), Math.round(td * 3.5));
+  });
+  // bunting from the tower top down to the lamp pillars and the flagstaff
+  const top = tiers[tiers.length - 1];
+  const apex = new V3(0, top.y + top.th + 0.55, sz);
+  for (const sx of [-1, 1]) string(swag(apex, new V3(sx * 1.95, 0.44 + 1.02, 1.95), 0.35, 20));
+  string(swag(apex, new V3(-2.3, 0.44 + 2.1, 1.2), 0.4, 14));
+  // plinth edges
+  line(new V3(-2.5, 0.47, 2.11), new V3(2.5, 0.47, 2.11), 22);
+  line(new V3(-2.8, 0.25, 2.41), new V3(2.8, 0.25, 2.41), 24);
+
+  const bulbGeo = new THREE.SphereGeometry(0.045, 6, 4);
+  const m4 = new THREE.Matrix4();
+  perColour.forEach((pts, k) => {
+    const im = new THREE.InstancedMesh(bulbGeo, mats.festival[k], pts.length);
+    pts.forEach((p, i) => im.setMatrixAt(i, m4.makeTranslation(p.x, p.y, p.z)));
+    g.add(im);
+  });
+  const wg = new THREE.BufferGeometry().setFromPoints(wire);
+  g.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x2a2a2a })));
+
+  // oil lamps along the upper plinth
+  const spots = [];
+  for (let x = -2.4; x <= 2.41; x += 0.4) if (Math.abs(x) > 0.8) spots.push([x, 1.92]);
+  for (let z = -1.6; z <= 1.2; z += 0.55) spots.push([-2.35, z], [2.35, z]);
+  const cup = new THREE.CylinderGeometry(0.05, 0.035, 0.04, 8);
+  const flame = new THREE.SphereGeometry(0.03, 6, 4);
+  const cups = new THREE.InstancedMesh(cup, mats.stone, spots.length);
+  const flames = new THREE.InstancedMesh(flame, mats.diya, spots.length);
+  spots.forEach(([x, z], i) => {
+    cups.setMatrixAt(i, m4.makeTranslation(x, 0.46, z));
+    flames.setMatrixAt(i, m4.makeTranslation(x, 0.51, z));
+  });
+  g.add(cups, flames);
+}
+
 export function makeTemple() {
   const g = new THREE.Group();
   // two-step stone plinth (tops at y = 0.22 and 0.44) and a ground-level front step
@@ -231,10 +302,12 @@ export function makeTemple() {
   // gopuram: stacked, tapering tiers resting on the sanctum
   let y = 0.44 + 1.36;
   const tiers = 5;
+  const tierInfo = [];
   for (let i = 0; i < tiers; i++) {
     const tw = 2.9 - i * 0.46;
     const td = 2.1 - i * 0.3;
     const th = 0.56 - i * 0.03;
+    tierInfo.push({ tw, td, th, y });
     g.add(box(tw, th, td, i % 2 ? mats.cream : mats.white, 0, y + th / 2, sz));
     g.add(box(tw + 0.2, 0.08, td + 0.2, mats.redStripe, 0, y + th + 0.04, sz));
     const niches = Math.max(2, 5 - i);
@@ -260,6 +333,8 @@ export function makeTemple() {
     g.add(cyl(0.16, 0.07, 0.1, mats.gold, sx * 1.95, 0.44 + 0.88, 1.95, 8));
     g.add(ball(0.05, mats.lampGlow, sx * 1.95, 0.44 + 0.98, 1.95));
   }
+
+  addFestivalLights(g, tierInfo, sz);
 
   // flagstaff on a stone base, front-left
   g.add(cyl(0.16, 0.2, 0.2, mats.stone, -2.3, 0.44 + 0.1, 1.2, 8));
