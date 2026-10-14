@@ -46,6 +46,7 @@ export class DogWalker {
     if (this.timer <= 0) {
       this.pausing = !this.pausing;
       this.timer = this.pausing ? 1.8 + this.rand() * 2.2 : 5 + this.rand() * 6;
+      if (this.pausing) this.onPause?.();
     }
     const ud = this.dog.userData;
     if (this.pausing) {
@@ -209,7 +210,10 @@ export class CatBrain {
     if (dist <= step) {
       this.pos.copy(target.p);
       this.i++;
-      if (target.wait) this.wait = target.wait;
+      if (target.wait) {
+        this.wait = target.wait;
+        this.onPerch?.();
+      }
     } else {
       this.pos.x += (dx / dist) * step;
       this.pos.y += (dy / dist) * step;

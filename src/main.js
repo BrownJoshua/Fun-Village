@@ -546,6 +546,45 @@ for (const [x, y, z, rad, tree] of [[-21, -2, -10, 1.7, 'palm'], [23, 3, -11, 1.
   if (tree === 'palm') palms.push(t);
 }
 
+/* ---------- village sounds ---------- */
+
+const audio = weather.sound;
+const wp = new THREE.Vector3();
+const emitFrom = (kind, obj, opts) => {
+  obj.getWorldPosition(wp);
+  audio.emit(kind, wp, camera, opts);
+};
+const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+const range = ([a, b]) => a + rand() * (b - a);
+// each emitter fires at random intervals while its `when` condition holds
+const ambience = [
+  { kind: 'child', every: [2.5, 6], src: () => pick(kids).k, when: (e) => e.day > 0.4 && e.rain < 0.6 },
+  { kind: 'child', every: [7, 14], src: () => pick(crowd.filter((c) => c.p.scale.y < 0.6)).p, when: (e) => e.day > 0.4 && e.rain < 0.6 },
+  { kind: 'bark', every: [12, 24], src: () => pick(dogs).dog, when: () => true },
+  { kind: 'meow', every: [10, 20], src: () => pick(cats).cat, when: () => true },
+  { kind: 'moo', every: [9, 18], src: () => pick([...bullocks, ploughCow]), when: () => true },
+  { kind: 'bell', every: [7, 12], src: () => temple, when: () => true, at: () => temple.userData.bell },
+  { kind: 'conch', every: [45, 80], src: () => temple, when: () => true, at: () => temple.userData.bell },
+  { kind: 'drum', every: [30, 55], src: () => temple, when: () => true, at: () => temple.userData.bell },
+].map((a) => ({ ...a, next: range(a.every) * 0.5 }));
+
+dogs.forEach((d) => (d.onPause = () => rand() < 0.5 && emitFrom('bark', d.dog)));
+cats.forEach((c) => (c.onPerch = () => emitFrom('meow', c.cat)));
+
+function tickAmbience(t, env) {
+  if (!audio.enabled) return;
+  for (const a of ambience) {
+    if (t < a.next) continue;
+    a.next = t + range(a.every);
+    if (!a.when(env)) continue;
+    if (a.at) {
+      wp.copy(a.at());
+      temple.localToWorld(wp);
+      audio.emit(a.kind, wp, camera);
+    } else emitFrom(a.kind, a.src());
+  }
+}
+
 /* ---------- UI ---------- */
 
 const $ = (s) => document.querySelector(s);
@@ -601,6 +640,7 @@ $('#t-sound').addEventListener('change', (e) => {
   const on = weather.sound.toggle();
   e.target.checked = on;
 });
+$('#s-vol').addEventListener('input', (e) => audio.setVolume(parseFloat(e.target.value)));
 $('#panel-toggle').addEventListener('click', () => $('#panel').classList.toggle('closed'));
 window.addEventListener('keydown', (e) => {
   const map = { 1: 'sunny', 2: 'cloudy', 3: 'rain', 4: 'storm', 5: 'mist' };
@@ -838,6 +878,8 @@ function frame() {
     b.wings[1].rotation.z = -flap;
     if (b.vis === 'bird') b.g.scale.setScalar(b.size * Math.min(1, vis * 1.5));
   }
+
+  tickAmbience(t, { day: weather.day, rain: rainy });
 
   // floating rocks
   minis.forEach((m, i) => {

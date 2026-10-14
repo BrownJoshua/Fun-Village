@@ -2,6 +2,7 @@
 // All weather parameters ease toward their targets so presets blend smoothly.
 import * as THREE from 'three';
 import { mats, rng } from './builders.js';
+import { Sound } from './audio.js';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const smooth = (a, b, x) => {
@@ -400,81 +401,5 @@ export class Weather {
     const away = new THREE.Vector3(-this.sunDir.x, 0, -this.sunDir.z).normalize();
     this.rainbow.position.copy(this.camera.position).addScaledVector(away, 330).setY(this.camera.position.y - 70);
     this.rainbow.lookAt(this.camera.position.x, this.rainbow.position.y, this.camera.position.z);
-  }
-}
-
-/* ---------- procedural sound (off by default, enabled from the UI) ---------- */
-
-class Sound {
-  constructor() {
-    this.ctx = null;
-    this.enabled = false;
-  }
-  noiseBuffer(seconds, brown = false) {
-    const len = this.ctx.sampleRate * seconds;
-    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < len; i++) {
-      const white = Math.random() * 2 - 1;
-      if (brown) { last = (last + 0.02 * white) / 1.02; d[i] = last * 3.5; } else d[i] = white;
-    }
-    return buf;
-  }
-  init() {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return false;
-    this.ctx = new Ctx();
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 0;
-    this.master.connect(this.ctx.destination);
-
-    const rain = this.ctx.createBufferSource();
-    rain.buffer = this.noiseBuffer(2);
-    rain.loop = true;
-    const hp = this.ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
-    const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
-    this.rainGain = this.ctx.createGain(); this.rainGain.gain.value = 0;
-    rain.connect(hp).connect(lp).connect(this.rainGain).connect(this.master);
-    rain.start();
-
-    const wind = this.ctx.createBufferSource();
-    wind.buffer = this.noiseBuffer(4, true);
-    wind.loop = true;
-    this.windFilter = this.ctx.createBiquadFilter(); this.windFilter.type = 'lowpass'; this.windFilter.frequency.value = 400;
-    this.windGain = this.ctx.createGain(); this.windGain.gain.value = 0;
-    wind.connect(this.windFilter).connect(this.windGain).connect(this.master);
-    wind.start();
-    return true;
-  }
-  toggle() {
-    if (!this.ctx && !this.init()) return false;
-    this.enabled = !this.enabled;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    this.master.gain.setTargetAtTime(this.enabled ? 0.8 : 0, this.ctx.currentTime, 0.2);
-    return this.enabled;
-  }
-  update(rain, wind, storm) {
-    if (!this.ctx || !this.enabled) return;
-    const t = this.ctx.currentTime;
-    this.rainGain.gain.setTargetAtTime(rain * 0.18, t, 0.3);
-    this.windGain.gain.setTargetAtTime(0.03 + wind * 0.4, t, 0.3);
-    this.windFilter.frequency.setTargetAtTime(250 + wind * 700 + storm * 300, t, 0.3);
-  }
-  thunder(delay) {
-    if (!this.ctx || !this.enabled) return;
-    const t0 = this.ctx.currentTime + delay;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(4, true);
-    const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(500, t0);
-    lp.frequency.exponentialRampToValueAtTime(70, t0 + 3);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(1.6, t0 + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.6);
-    src.connect(lp).connect(g).connect(this.master);
-    src.start(t0);
-    src.stop(t0 + 4);
   }
 }

@@ -20,7 +20,7 @@ Three.js r160 is vendored in `vendor/`, so it runs offline.
 - **Weather**: Sunny, Cloudy, Rain, Storm, Mist (keys `1`–`5`). Changes blend smoothly.
 - **Time of day**: Dawn / Noon / Dusk / Night presets, a clock slider, or the *Day cycle* toggle.
 - **Fine-tune**: clouds, rain, fog, wind and lightning sliders.
-- **Sound** (off by default): procedural rain, wind and thunder.
+- **Sound** (off by default, with a volume slider): procedural rain, wind and thunder, plus children playing, dogs barking, cats meowing, cows mooing, and temple bells, conch and drum. Voices are positional, so they get louder as you zoom in and pan with the view.
 - Rain then Sunny at low sun shows a rainbow while the ground is still wet.
 
 ## Layout
@@ -29,4 +29,5 @@ Three.js r160 is vendored in `vendor/`, so it runs offline.
 - `src/builders.js` – houses, temple, trees, people, bullock, cart, props
 - `src/island.js` – island terrain, rock underside, road ribbons
 - `src/life.js` – lane walkers (dogs), climbing cats, geese, ploughing path
+- `src/audio.js` – procedural sound synthesis
 - `src/weather.js` – sky, sun/moon, lights, clouds, rain, lightning, fog, sound

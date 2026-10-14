@@ -199,59 +199,87 @@ export function makeHut({ r = 1.05, h = 1.0 } = {}) {
 
 export function makeTemple() {
   const g = new THREE.Group();
+  // two-step stone plinth (tops at y = 0.22 and 0.44) and a ground-level front step
   g.add(box(5.6, 0.22, 4.8, mats.stone, 0, 0.11, 0));
   g.add(box(5.0, 0.22, 4.2, mats.cream, 0, 0.33, 0));
-  // steps at the front
-  g.add(box(1.6, 0.14, 0.5, mats.stone, 0, 0.07, 2.65));
-  g.add(box(1.3, 0.14, 0.4, mats.stone, 0, 0.21, 2.5));
+  g.add(box(2.2, 0.11, 0.5, mats.stone, 0, 0.055, 2.65));
 
-  // mandapam (pillared hall)
+  // sanctum (garbhagriha): a solid body that carries the tower, y 0.44 -> 1.8
+  const sz = -0.4;
+  g.add(box(2.9, 1.36, 2.1, mats.white, 0, 0.44 + 0.68, sz));
+  g.add(box(3.02, 0.12, 2.22, mats.redStripe, 0, 0.5, sz));
+  g.add(box(3.04, 0.1, 2.24, mats.redStripe, 0, 1.72, sz));
+  for (const sx of [-1, 1]) {
+    for (const zz of [-1, 0.0]) g.add(box(0.1, 1.2, 0.06, mats.redStripe, sx * 1.46, 1.1, sz + zz * 0.9));
+    g.add(box(0.06, 0.9, 0.12, mats.darkWood, sx * 1.46, 1.05, sz - 0.1)); // side window slits
+  }
+  g.add(box(2.9, 0.08, 0.06, mats.redStripe, 0, 1.6, 0.66));
+
+  // mandapam (pillared porch) in front of the sanctum
   g.add(box(3.2, 1.15, 1.7, mats.white, 0, 0.44 + 0.575, 1.0));
   g.add(box(3.26, 0.1, 1.76, mats.redStripe, 0, 0.44 + 1.2, 1.0));
   g.add(box(3.4, 0.1, 1.9, mats.cream, 0, 0.44 + 1.3, 1.0));
-  for (let i = 0; i < 5; i++) g.add(box(0.1, 1.15, 0.04, mats.redStripe, -1.4 + i * 0.7, 1.02, 1.88));
+  // doorway with lintel and flanking pillars
+  g.add(box(0.9, 0.95, 0.05, mats.dark, 0, 0.44 + 0.475, 1.87));
+  g.add(box(1.25, 0.1, 0.1, mats.redStripe, 0, 0.44 + 1.0, 1.88));
+  for (const sx of [-1, 1]) {
+    g.add(cyl(0.07, 0.08, 1.0, mats.redStripe, sx * 0.6, 0.44 + 0.5, 1.9, 8));
+    g.add(box(0.2, 0.08, 0.2, mats.cream, sx * 0.6, 0.44 + 1.04, 1.9));
+    for (const px of [0.95, 1.4]) g.add(box(0.1, 1.15, 0.04, mats.redStripe, sx * px, 1.02, 1.88));
+  }
 
-  // gopuram: stacked, tapering tiers over the sanctum
+  // gopuram: stacked, tapering tiers resting on the sanctum
   let y = 0.44 + 1.36;
   const tiers = 5;
   for (let i = 0; i < tiers; i++) {
     const tw = 2.9 - i * 0.46;
     const td = 2.1 - i * 0.3;
     const th = 0.56 - i * 0.03;
-    g.add(box(tw, th, td, i % 2 ? mats.cream : mats.white, 0, y + th / 2, -0.4));
-    g.add(box(tw + 0.2, 0.08, td + 0.2, mats.redStripe, 0, y + th + 0.04, -0.4));
+    g.add(box(tw, th, td, i % 2 ? mats.cream : mats.white, 0, y + th / 2, sz));
+    g.add(box(tw + 0.2, 0.08, td + 0.2, mats.redStripe, 0, y + th + 0.04, sz));
     const niches = Math.max(2, 5 - i);
     for (let n = 0; n < niches; n++) {
       const nx = -tw / 2 + (tw * (n + 0.5)) / niches;
-      g.add(box(0.16, th * 0.62, 0.06, mats.darkWood, nx, y + th * 0.5, -0.4 + td / 2 + 0.02));
-      g.add(ball(0.05, mats.yellow, nx, y + th * 0.78, -0.4 + td / 2 + 0.05));
+      g.add(box(0.16, th * 0.62, 0.06, mats.darkWood, nx, y + th * 0.5, sz + td / 2 + 0.02));
+      g.add(ball(0.05, mats.yellow, nx, y + th * 0.78, sz + td / 2 + 0.05));
     }
     y += th + 0.08;
   }
   const barrelGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 10);
   barrelGeo.rotateZ(Math.PI / 2);
-  g.add(mesh(barrelGeo, mats.redStripe, 0, y + 0.3, -0.4));
+  g.add(mesh(barrelGeo, mats.redStripe, 0, y + 0.3, sz));
   for (const kx of [-0.45, 0, 0.45]) {
-    g.add(cyl(0.05, 0.09, 0.2, mats.gold, kx, y + 0.72, -0.4, 6));
-    g.add(mesh(new THREE.ConeGeometry(0.06, 0.28, 6), mats.gold, kx, y + 0.95, -0.4));
+    g.add(cyl(0.05, 0.09, 0.2, mats.gold, kx, y + 0.72, sz, 6));
+    g.add(mesh(new THREE.ConeGeometry(0.06, 0.28, 6), mats.gold, kx, y + 0.95, sz));
   }
-  // sanctum doorway under the tower
-  g.add(box(0.7, 0.8, 0.06, mats.dark, 0, 0.44 + 0.4, -0.4 + 1.05 + 0.0));
 
-  // temple flag
-  g.add(cyl(0.03, 0.03, 1.5, mats.darkWood, 1.7, 0.44 + 0.75, 1.7, 5));
+  // lamp pillars either side of the steps
+  for (const sx of [-1, 1]) {
+    g.add(box(0.34, 0.14, 0.34, mats.stone, sx * 1.95, 0.44 + 0.07, 1.95));
+    g.add(cyl(0.07, 0.09, 0.7, mats.stone, sx * 1.95, 0.44 + 0.49, 1.95, 8));
+    g.add(cyl(0.16, 0.07, 0.1, mats.gold, sx * 1.95, 0.44 + 0.88, 1.95, 8));
+    g.add(ball(0.05, mats.lampGlow, sx * 1.95, 0.44 + 0.98, 1.95));
+  }
+
+  // flagstaff on a stone base, front-left
+  g.add(cyl(0.16, 0.2, 0.2, mats.stone, -2.3, 0.44 + 0.1, 1.2, 8));
+  g.add(cyl(0.03, 0.04, 1.9, mats.darkWood, -2.3, 0.44 + 1.15, 1.2, 5));
+  g.add(ball(0.06, mats.gold, -2.3, 0.44 + 2.12, 1.2));
   const flag = new THREE.Mesh(
     new THREE.PlaneGeometry(0.6, 0.34, 6, 1),
     new THREE.MeshStandardMaterial({ color: 0xff8a1f, side: THREE.DoubleSide, roughness: 0.9 })
   );
-  flag.position.set(2.0, 0.44 + 1.3, 1.7);
+  flag.position.set(-2.0, 0.44 + 1.85, 1.2);
   flag.castShadow = true;
   g.add(flag);
   g.userData.flag = flag;
   g.userData.flagBase = Float32Array.from(flag.geometry.attributes.position.array);
 
-  g.userData.lamp = new V3(0, 1.3, 2.4);
+  // hanging lantern under the porch ledge
+  g.add(cyl(0.01, 0.01, 0.3, mats.dark, 0, 1.54, 2.0, 3));
+  g.userData.lamp = new V3(0, 1.36, 2.0);
   g.userData.doorFront = new V3(0, 0, 3.1);
+  g.userData.bell = new V3(0, 0.44 + 1.0, 1.9);
   return g;
 }
 
