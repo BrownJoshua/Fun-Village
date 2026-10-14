@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Floating Village · South India</title>
+  <meta name="description" content="A floating low-poly South Indian village you can orbit, with live weather and time-of-day controls. Built with Three.js." />
+  <style>
+    :root {
+      --ink: #2b2118; --paper: rgba(255, 248, 232, .86); --line: rgba(120, 80, 30, .18);
+      --accent: #c8542a; --accent-ink: #fff7ea; --muted: #7a6650;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --ink: #f6ead6; --paper: rgba(28, 22, 18, .78); --line: rgba(255, 220, 170, .16); --accent: #f08a4b; --accent-ink: #25150a; --muted: #b9a58c; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #bfd8ea; overflow: hidden; font-family: ui-rounded, "Segoe UI", system-ui, -apple-system, sans-serif; color: var(--ink); }
+    #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    .title { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 16px; pointer-events: none; text-shadow: 0 1px 12px rgba(0,0,0,.35); color: #fff; }
+    .title h1 { margin: 0; font-size: clamp(20px, 3.4vw, 30px); letter-spacing: .01em; font-weight: 700; }
+    .title p { margin: 2px 0 0; font-size: 13px; opacity: .9; }
+
+    #panel {
+      position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: 304px;
+      background: var(--paper); backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+      border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 16px; box-shadow: 0 10px 40px rgba(0,0,0,.22);
+      max-height: calc(100vh - 32px); overflow: auto; transition: transform .3s ease, opacity .3s ease;
+    }
+    #panel.closed { transform: translateY(calc(100% + 40px)); opacity: 0; pointer-events: none; }
+    h2 { margin: 12px 0 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    h2:first-child { margin-top: 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; }
+    button.chip {
+      flex: 1 1 auto; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600;
+      padding: 7px 10px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, transform .1s;
+    }
+    button.chip:hover { background: rgba(200, 84, 42, .12); }
+    button.chip:active { transform: scale(.96); }
+    button.chip.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .slider { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 8px; margin: 7px 0; font-size: 13px; font-weight: 600; }
+    .slider .time { grid-column: 1 / -1; display: flex; justify-content: space-between; }
+    input[type=range] { width: 100%; accent-color: var(--accent); height: 22px; margin: 0; }
+    .toggles { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+    .toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .toggles input { accent-color: var(--accent); width: 16px; height: 16px; }
+    .hint { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+    .fab {
+      position: fixed; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%;
+      border: 1px solid var(--line); background: var(--paper); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      color: var(--ink); font-size: 20px; cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,.2);
+    }
+    @media (max-width: 560px) {
+      #panel { left: 12px; right: 12px; width: auto; bottom: max(12px, env(safe-area-inset-bottom)); max-height: 56vh; }
+    }
+    body:not(.ready) #panel, body:not(.ready) .fab { opacity: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Interactive 3D floating South Indian village"></canvas>
+
+  <div class="title">
+    <h1>Floating Village</h1>
+    <p>South India · drag to orbit, scroll to zoom</p>
+  </div>
+
+  <button class="fab" id="panel-toggle" aria-label="Toggle weather panel" title="Weather panel">☁</button>
+
+  <section id="panel" aria-label="Weather controls">
+    <h2>Weather</h2>
+    <div class="row">
+      <button class="chip" data-weather="sunny">☀ Sunny</button>
+      <button class="chip" data-weather="cloudy">☁ Cloudy</button>
+      <button class="chip" data-weather="rain">🌧 Rain</button>
+      <button class="chip" data-weather="storm">⛈ Storm</button>
+      <button class="chip" data-weather="mist">🌫 Mist</button>
+    </div>
+
+    <h2>Time of day</h2>
+    <div class="row">
+      <button class="chip" data-time="dawn">Dawn</button>
+      <button class="chip" data-time="noon">Noon</button>
+      <button class="chip" data-time="dusk">Dusk</button>
+      <button class="chip" data-time="night">Night</button>
+    </div>
+    <div class="slider"><span class="time"><span>Clock</span><span id="time-label">11:12 AM</span></span>
+      <input id="s-time" type="range" min="0" max="24" step="0.05" value="11.2" style="grid-column:1/-1" aria-label="Time of day" /></div>
+
+    <h2>Fine-tune</h2>
+    <label class="slider">Clouds <input id="s-cloud" type="range" min="0" max="1" step="0.01" value="0.12" /></label>
+    <label class="slider">Rain <input id="s-rain" type="range" min="0" max="1" step="0.01" value="0" /></label>
+    <label class="slider">Fog <input id="s-fog" type="range" min="0" max="1" step="0.01" value="0" /></label>
+    <label class="slider">Wind <input id="s-wind" type="range" min="0" max="1" step="0.01" value="0.25" /></label>
+    <label class="slider">Lightning <input id="s-storm" type="range" min="0" max="1" step="0.01" value="0" /></label>
+
+    <div class="toggles">
+      <label><input type="checkbox" id="t-rotate" checked /> Auto-orbit</label>
+      <label><input type="checkbox" id="t-flow" /> Day cycle</label>
+      <label><input type="checkbox" id="t-sound" /> Sound</label>
+    </div>
+    <p class="hint">Keys 1–5 switch weather. Tip: Rain, then Sunny — a rainbow appears while the ground is still wet.</p>
+  </section>
+
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js" } }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
