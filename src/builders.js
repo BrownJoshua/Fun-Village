@@ -182,6 +182,12 @@ export function makeHut({ r = 1.05, h = 1.0 } = {}) {
   const roof = mesh(new THREE.ConeGeometry(r * 1.6, 1.55, 12), mats.thatch, 0, h + 0.14 + 0.72, 0);
   g.add(roof);
   g.add(cyl(0.05, 0.1, 0.3, mats.thatch, 0, h + 0.14 + 1.55, 0, 6));
+  // clay chimney pipe poking through the thatch
+  const cx = r * 0.55, cz = -r * 0.35;
+  const surfaceY = h + 0.085 + 1.55 * (1 - Math.hypot(cx, cz) / (r * 1.6));
+  g.add(cyl(0.1, 0.12, 0.6, mats.pot, cx, surfaceY + 0.15, cz, 8));
+  g.add(cyl(0.13, 0.1, 0.06, mats.dark, cx, surfaceY + 0.47, cz, 8));
+  g.userData.chimney = new V3(cx, surfaceY + 0.52, cz);
   g.add(box(0.42, 0.78, 0.06, mats.darkWood, 0, 0.14 + 0.39, r * 1.0));
   g.add(box(0.26, 0.26, 0.06, mats.windowGlow, r * 0.62, 0.14 + h * 0.62, r * 0.8));
   g.userData.lamp = new V3(0, 0.9, r + 0.5);

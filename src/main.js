@@ -85,7 +85,7 @@ function addLamp(parent, local, base = 6) {
   lights.push(l);
 }
 
-const palms = [], trees = [], walkers = [], chickens = [], grazers = [];
+const palms = [], trees = [], walkers = [], chickens = [], grazers = [], chimneys = [];
 let temple = null;
 
 // houses, huts and the temple, all facing the lane
@@ -103,6 +103,7 @@ layout.forEach((s, i) => {
   put(obj, x, z, s.r);
   faceCenter(obj);
   if (s.t === 'temple') temple = obj;
+  if (s.t === 'hut') { obj.updateMatrix(); chimneys.push(obj.userData.chimney.clone().applyMatrix4(obj.matrix)); }
   addLamp(obj, obj.userData.lamp, s.t === 'temple' ? 9 : 6);
   // footpath from the doorstep to the lane
   obj.updateMatrixWorld(true);
@@ -388,6 +389,33 @@ for (let i = 0; i < 80; i++) {
   splashes.push({ m, t: rand() });
 }
 
+/* ---------- chimney smoke ---------- */
+
+const smokeTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,.9)');
+  g.addColorStop(0.5, 'rgba(255,255,255,.35)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+const PUFFS = 12, PUFF_LIFE = 5;
+const smoke = [];
+chimneys.forEach((origin, ci) => {
+  for (let i = 0; i < PUFFS; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false, opacity: 0 }));
+    sp.renderOrder = 3;
+    island.add(sp);
+    smoke.push({ sp, origin, t: i / PUFFS, drift: (rand() - 0.5) * 0.4, spin: rand() * 6.28 });
+  }
+});
+
 /* ---------- fireflies for the night ---------- */
 
 const flyN = 70;
@@ -659,6 +687,23 @@ function frame() {
     s.m.scale.setScalar(0.03 + s.t * 0.32);
     s.m.material.opacity = (1 - s.t) * 0.55;
   });
+
+  // chimney smoke: rises, widens and fades; wind bends it, rain flattens it
+  const smokeCol = 0.3 + 0.32 * weather.day;
+  for (const s of smoke) {
+    s.t += (dt / PUFF_LIFE) * (1 + rainy * 0.5);
+    if (s.t >= 1) s.t -= 1;
+    const k = s.t;
+    const bend = (0.25 + wind * 2.2) * k * k;
+    s.sp.position.set(
+      s.origin.x + bend * 1.6 + Math.sin(t * 0.8 + s.spin) * 0.06 * k + s.drift * k,
+      s.origin.y + k * (1.9 - rainy * 0.7),
+      s.origin.z + bend * 0.5
+    );
+    s.sp.scale.setScalar(0.22 + k * 1.1);
+    s.sp.material.opacity = Math.sin(Math.min(1, k * 6) * Math.PI / 2) * (1 - k) * 0.85 * (1 - w.fog * 0.4);
+    s.sp.material.color.setScalar(smokeCol);
+  }
 
   // fireflies
   const flyOp = night * (1 - rainy) * (1 - w.fog * 0.6);
